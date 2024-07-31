@@ -1,0 +1,12 @@
+﻿1. zip driver package or unzip directory
+2. run commands directly
+   a) signingcheck -p path\drv_name.zip
+   b) signingcheck -p path\of\driver\directory
+   add -f for logs in folder
+   c) signingcheck -f -p path\drv_name.zip
+   d) signingcheck -f -p path\of\driver\directory
+   add -v for saving all detail logs
+3. run check.cmd with mutiple drivers
+   a) copy all driver.zip files or unzip directories into drv directory
+   b) double click cmd
+4. csv and html report will be saved in logs directory

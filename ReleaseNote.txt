@@ -1,0 +1,79 @@
+--- v2.0.0
+a) first rust edition
+
+--- v1.8.6.0
+a) fix dir name with white space while dump cat file
+
+--- v1.8.5.0
+a) make display checkbox can sticky left
+
+--- v1.8.4.0
+a) uncheck 1 line checkbox will turn off tips
+
+--- v1.8.3.0
+a) add single line view checkbox
+
+--- v1.8.2.0
+a) optimize javascript code
+
+--- v1.8.1.0
+a) fix tip block over window edge issue
+
+--- v1.8.0.0
+a) add -v for saving all detail logs
+
+--- v1.7.2.0
+a) add tips for overflow content
+
+--- v1.7.1.0
+a) change filter algorithm 
+b) html can hide Path, OtherOS, Signers
+c) add filter non-WHQL
+d) add column resizable feature
+
+--- v1.7.0.0
+a) change execute sigcheck.exe and expand.exe methods
+b) add method to expand dl_ and sy_ files
+
+--- v1.6.0.0
+a) add feature arg -f for log by directory and -p for source path
+
+--- v1.5.9.0
+a) shorten the column names
+
+--- v1.5.8.0
+a) modify filter and sticky function
+b) fix double calling updateStickyColumns function
+
+--- v1.5.7.0
+a) change html table filter behavior
+b) set html report table Path width
+
+--- v1.5.6.0
+a) add manual file
+b) add cmd for mutiple drivers
+c) add html filter function
+d) add table style
+
+--- v1.5.5.0
+a) take the earliest date for multiple lifetime signing signers
+
+--- v1.5.4.0
+a) directly load script and style into html
+
+--- v1.5.3.0
+a) fix directory path with relative path issue
+
+--- v1.5.2.0
+a) change generate html report method by loading template and seperating css js files
+
+--- v1.5.1.0
+a) add post build for copying assets to outDir
+b) fix zip extract dir name to tmp for workaround of path longer than 260 characters
+
+--- v1.5.0.0
+a) sort result by file path
+b) modify html report
+
+--- v1.4.0.0
+a) public release
