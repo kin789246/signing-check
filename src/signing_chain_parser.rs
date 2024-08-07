@@ -1,130 +1,98 @@
-﻿/*
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.RegularExpressions;
+﻿use std::path::Path;
+use chrono::{Local, Months};
+use crate::date_helper::parse_date;
 
-namespace SigningCheck
-{
-    internal static class SigningChainParser
-    {
-        internal static void ParseSigningChain(string raw, List<SigcheckData> sigcheckDatas, string drvPath)
-        {
-            StringReader sr = new StringReader(raw);
-            string rgxPath = @"^[a-zA-Z]\:\\.+\..{3}";
-            string rgxDate = @"\d+\/\d+\/\d+";
+use crate::sigcheck_data::{SigcheckData, SignerData};
 
-            SigcheckData sc = new SigcheckData();
-            SignerData signer = new SignerData();
-            Match match;
-            string line = sr.ReadLine();
-            while (line != null)
+pub fn parse_signchain(raw: &str, sigchecks: &mut Vec<SigcheckData>, to_trim: &str) {
+    let mut raw_iter = raw.lines().into_iter();
+    let mut is_line = raw_iter.next();
+    while is_line.is_some() {
+        let line = is_line.unwrap().trim();
+        let path = Path::new(line.trim_end_matches(':'));
+        if path.exists() {
+            if path.extension().unwrap().eq_ignore_ascii_case("cat") ||
+                path.extension().unwrap().eq_ignore_ascii_case("dll") ||
+                path.extension().unwrap().eq_ignore_ascii_case("sys")
             {
-                if (Regex.IsMatch(line, rgxPath))
+                let f_name = path.to_string_lossy().to_string();
+                let trimed: String;
+                if let Some(trim_i) = f_name.find(to_trim) {
+                    trimed = (&f_name[(trim_i+to_trim.len())..]).to_string();
+                }
+                else {
+                    trimed = f_name.clone();
+                }
+                if !sigchecks
+                    .iter()
+                    .any(|x| x.file_name.eq_ignore_ascii_case(&trimed)) 
                 {
-                    line = line.TrimEnd(':');
-                    if (string.Equals(Path.GetExtension(line), ".cat", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(Path.GetExtension(line), ".dll", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(Path.GetExtension(line), ".sys", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var idx = line.IndexOf(drvPath, StringComparison.OrdinalIgnoreCase);
-                        if (idx != -1)
-                        {
-                            line = line.Substring(idx + drvPath.Length);
-                        }
-
-                        sc = sigcheckDatas.Find(x => x.FileName == line);
-                        if (sc == null)
-                        {
-                            sc = new SigcheckData();
-                            sigcheckDatas.Add(sc);
-                            sc.FileName = line;
-                        }
-                        line = sr.ReadLine();
-                        while (!line.Contains("MachineType:") && line != null)
-                        {
-                            if (line.Contains("Signing date:"))
+                    let mut s = SigcheckData::new();
+                    s.file_name = trimed.clone();
+                    sigchecks.push(s);
+                }
+                let sc: &mut SigcheckData = sigchecks
+                    .iter_mut()
+                    .find(|x| x.file_name.eq_ignore_ascii_case(&trimed))
+                    .unwrap();
+                is_line = raw_iter.next();
+                while is_line.is_some() {
+                    let mut line = is_line.unwrap().trim();
+                    if line.starts_with("Signing date:") {
+                        let mut signer = SignerData::new();
+                        signer.signing_date = (&line[13..]).trim().to_string();
+                        is_line = raw_iter.next();
+                        while is_line.is_some() {
+                            line = is_line.unwrap().trim();
+                            if line.starts_with("Signers:") ||
+                                line.starts_with("Signer:") 
                             {
-                                signer = new SignerData();
-                                sc.Signers.Add(signer);
-                                match = Regex.Match(line, rgxDate);
-                                if (match.Success)
-                                {
-                                    signer.SigningDate = match.ToString();
+                                if let Some(ll) = raw_iter.next() {
+                                    signer.name = ll.replace(",", " ").trim().to_string();
                                 }
-                                else
-                                {
-                                    signer.SigningDate = "n/a";
+                                for _i in 0..8 {
+                                    is_line = raw_iter.next();
+                                    line = is_line.unwrap().trim();
+                                    if line.starts_with("Valid Usage:") {
+                                        for v in (&line[12..]).trim().split(",") {
+                                            signer.valid_usages.push(v.trim().to_string());
+                                        }
+                                    }
+                                    else if line.starts_with("Valid from:") {
+                                        signer.valid_from = (&line[11..]).trim().to_string();
+                                    }
+                                    else if line.starts_with("Valid to:") {
+                                        signer.valid_to = (&line[9..]).trim().to_string();
+                                        let now = Local::now()
+                                            .format("%Y/%m/%d")
+                                            .to_string();
+                                        if let Ok(vt) = parse_date(&signer.valid_to) {
+                                            let nt = parse_date(&now).unwrap();
+                                            if nt
+                                                .checked_add_months(Months::new(1))
+                                                .unwrap() <
+                                                vt
+                                            {
+                                                signer.validated = true;
+                                            }
+                                        }
+                                    }
                                 }
+                                break;
                             }
-                            if (line.Trim() == "Signers:" || line.Trim() == "Signer:")
-                            {
-                                line = sr.ReadLine();
-                                signer.Name = line.Trim().Replace(',', ' ');
-                                //read 8 lines
-                                for (int i = 0; i < 8; i++)
-                                {
-                                    line = sr.ReadLine();
-                                    string vu = "Valid Usage:";
-                                    if (line.Contains(vu))
-                                    {
-                                        foreach (string v in line.TrimStart().Substring(vu.Length).Split(','))
-                                        {
-                                            signer.ValidUsages.Add(v.Trim());
-                                        }
-                                    }
-                                    else if (line.Contains("Valid from:"))
-                                    {
-                                        match = Regex.Match(line, rgxDate);
-                                        if (match.Success)
-                                        {
-                                            signer.ValidFrom = match.ToString();
-                                        }
-                                    }
-                                    else if (line.Contains("Valid to:"))
-                                    {
-                                        match = Regex.Match(line, rgxDate);
-                                        if (match.Success)
-                                        {
-                                            signer.ValidTo = match.ToString();
-                                        }
-                                        if (DateTime.Now.AddMonths(1) < DateTime.Parse(signer.ValidTo))
-                                        {
-                                            signer.Validated = true;
-                                        }
-                                    }
-                                }
-                            }
-                            line = sr.ReadLine();
+                            is_line = raw_iter.next();
+                        }
+                        sc.signers.push(signer);
+                    }
+                    is_line = raw_iter.next();
+                    if let Some(mt) = is_line {
+                        if mt.trim().starts_with("MachineType:") {
+                            break;
                         }
                     }
                 }
-                line = sr.ReadLine();
             }
         }
+        is_line = raw_iter.next();
     }
 }
-/*
-    singers: sigcheck.exe -i -s *.*
-    
-    Sigcheck v2.90 - File version and signature viewer
-    Copyright (C) 2004-2022 Mark Russinovich
-    Sysinternals - www.sysinternals.com
-    
-    D:\catdllsys\files\intcpmt.cat:
-    	Verified:	Signed
-    	File date:	?? 08:38 2024/5/18
-    	Signing date:	?? 05:58 2023/12/20
-    	Catalog:	D:\catdllsys\files\intcpmt.cat
-    	Signers:
-    	   Microsoft Windows Hardware Compatibility Publisher
-    		Cert Status:	Valid
-    		Valid Usage:	Lifetime Signing, 1.3.6.1.4.1.311.10.3.39, WHQL Crypto, Code Signing
-    		Cert Issuer:	Microsoft Windows PCA 2010
-    		Serial Number:	33 00 00 0A F9 23 46 84 B2 8D 04 7F D7 00 00 00 00 0A F9
-    		Thumbprint:	3D31A30BAB5371D14DC060D6722D0C56A46E8E01
-    		Algorithm:	sha256RSA
-    		Valid from:	?? 03:18 2023/10/20
-    		Valid to:	?? 03:18 2024/10/17
- */
-*/

@@ -1,106 +1,101 @@
-﻿#[derive(Debug)]
+﻿use std::path::Path;
+use chrono::Local;
+
+#[derive(Debug)]
 pub struct Options {
-    pub save_log: bool,
-    pub gui_mode: bool,
-    pub force: bool,
-    pub inf_list: String
+    pub save_log: bool,  // -v
+    pub log_by_dir: bool,  // -f
+    pub print_help: bool,
+    pub is_zip: bool,
+    pub not_exist: bool,
+    pub source: String,
+    pub output: String
 }
 
 impl Options {
     pub fn parse() -> Self {
         let mut save_log = false;
-        let mut force = false;
-        let gui_mode = match std::env::args().len() {
+        let mut log_by_dir = false;
+        let mut is_zip = false;
+        let mut print_help = match std::env::args().len() {
             1 => true,
             _ => false
         };
-        let mut inf_list = String::new();
-        for line in std::env::args() {
-            match &line {
-                s if s.eq_ignore_ascii_case("-s") => save_log = true,
-                s if s.contains(".txt") => inf_list = line,
-                s if s.eq_ignore_ascii_case("-f") => force = true,
-                _ => continue
-            }
-        }
-        Self { save_log, gui_mode, force, inf_list }
-    }
-}
-/*
-using System;
-using System.IO;
-using System.Text.RegularExpressions;
-
-namespace SigningCheck
-{
-    public class Options
-    {
-        private bool logByDir = false;
-        private bool isZip;
-        private bool logDetail = false;
-        private string sourceName;
-        private string outputName;
-
-        public bool LogByDir { get { return logByDir; } }
-        public bool IsZip { get { return isZip; } }
-        public bool LogDetail { get { return logDetail; } }
-        public string SourceName { get { return sourceName; } }
-        public string OutputName { get { return outputName; } }
-
-        public void Build(string[] args)
-        {
-            int i = 0;
-            while (i < args.Length)
-            {
-                if (args[i] == "-f")
-                {
-                    logByDir = true;
-                }
-                if (args[i] == "-p")
-                {
-                    if (i + 1 < args.Length) 
-                    {
-                        i++;
-                        if (args[i].StartsWith("-"))
-                        {
-                            return;
-                        }
-                        sourceName = args[i];
-                        if (Path.GetExtension(args[i]) == ".zip")
-                        {
-                            isZip = true;
-                            outputName = Path.GetFileNameWithoutExtension(args[i]) + DateTime.Now.ToString("_yyyyMMdd_HHmmss");
-                        }
-                        else
-                        {
-                            isZip = false;
-                            string rgxDrvPath = @"\\.+\\";
-                            outputName = args[i].TrimEnd('\\');
-                            Match match = Regex.Match(outputName, rgxDrvPath);
-                            if (match.Success)
-                            {
-                                outputName = outputName.Substring(match.Index + match.Length);
-                            }
-                            else
-                            {
-                                outputName = outputName.Substring(args[i].IndexOf('\\') + 1);
-                            }
-                            outputName = outputName + DateTime.Now.ToString("_yyyyMMdd_HHmmss");
-                        }
+        let mut not_exist = false;
+        let mut source = String::new();
+        let mut output = String::new();
+        let mut args_iter = std::env::args().into_iter();
+        let mut para = args_iter.next();
+        while para.is_some() {
+            let pp = para.clone().unwrap();
+            match pp {
+                s if s.eq_ignore_ascii_case("-v") => save_log = true,
+                s if s.eq_ignore_ascii_case("-f") => log_by_dir = true,
+                s if s.eq_ignore_ascii_case("-p") => {
+                    if let Some(pp) = args_iter.next() {
+                        Self::get_path(
+                            &pp,
+                            &mut is_zip, 
+                            &mut not_exist,
+                            &mut source,
+                            &mut output
+                        );
                     }
+                },
+                _ => {
+                    para = args_iter.next();
+                    continue;
                 }
-                if (args[i] == "-v")
-                {
-                    logDetail = true;
-                }
-                i++;
             }
+            para = args_iter.next();
+        } 
+        if source.is_empty() {
+            print_help = true;
+        }
+        if log_by_dir {
+            output = output.clone() + "\\" + &output;
+        }
+        Self { save_log, log_by_dir, print_help, is_zip, not_exist, source, output }
+    }
 
-            if (logByDir)
-            {
-                outputName = outputName + "\\" + outputName;
+    fn get_path(
+        line: &str,
+        is_zip: &mut bool,
+        not_exist: &mut bool,
+        source: &mut String,
+        output: &mut String
+    ) {
+        let time = Local::now();
+        let time_stamp = time.format("_%Y%m%d_%H%M%S").to_string();
+        let path = Path::new(line);
+        if path.is_dir() {
+            *is_zip = false;
+            *source = line.trim_end_matches('\\').to_string();
+            let o = path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+            *output = o + &time_stamp;
+        }
+        else if path.is_file() {
+            if let Some(ext) = path.extension() {
+                if ext.eq_ignore_ascii_case("zip") {
+                    *is_zip = true;
+                    *source = line.to_string();
+                    let o = path
+                        .file_stem()
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                        .to_string();
+                    *output = o + &time_stamp;
+                }
             }
+        }
+        else {
+            *not_exist = true;
         }
     }
 }
-*/

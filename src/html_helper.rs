@@ -1,4 +1,12 @@
-﻿/*
+﻿use std::{fs::File, io::{Error, Read}};
+
+fn _load_txt(path: &str) -> Result<String, Error> {
+    let mut file = File::open(path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+    Ok(content)
+}
+/*
 using System;
 using System.IO;
 using System.Text;

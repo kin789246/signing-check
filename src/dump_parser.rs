@@ -1,87 +1,38 @@
-﻿/*
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.RegularExpressions;
+﻿use std::path::Path;
+use crate::sigcheck_data::SigcheckData;
 
-namespace SigningCheck
-{
-    internal static class DumpParser
-    {
-        internal static void ParseDump(string raw, List<SigcheckData> sigcheckDatas, string drvPath)
-        {
-            StringReader sr = new StringReader(raw);
-            string line = sr.ReadLine();
-            string rgxPath = @"^[a-zA-Z]\:\\.+\..{3}";
-            string rgxOS = @"OS: *";
-            string rgxType = @"SigningType: *";
-
-            SigcheckData sc = new SigcheckData();
-            while (line != null)
-            {
-                if (Regex.IsMatch(line, rgxPath))
-                {
-                    if (string.Equals(Path.GetExtension(line), ".cat", StringComparison.OrdinalIgnoreCase))
-                    {
-                        sc = new SigcheckData();
-                        sigcheckDatas.Add(sc);
-                        sc.FileName = line;
-                        var idx = line.IndexOf(drvPath, StringComparison.OrdinalIgnoreCase);
-                        if (idx != -1)
-                        {
-                            sc.FileName = line.Substring(idx + drvPath.Length);
-                        }
-                    }
+pub fn parse_dump(raw: &str, sigchecks: &mut Vec<SigcheckData>, to_trim: &str) {
+    let mut sc: SigcheckData;
+    let mut raw_iter = raw.lines().into_iter();
+    let mut is_line = raw_iter.next();
+    while is_line.is_some() {
+        let line = is_line.unwrap().trim();
+        let path = Path::new(line);
+        if path.exists() {
+            if path.extension().unwrap().eq_ignore_ascii_case("cat") {
+                sc = SigcheckData::new();
+                let f_name = path.to_string_lossy().to_string();
+                let trimed: String;
+                if let Some(trim_i) = f_name.find(to_trim) {
+                    trimed = (&f_name[(trim_i+to_trim.len())..]).to_string();
                 }
-                else if (Regex.IsMatch(line, rgxOS))
-                {
-                    string os = "OS: ";
-                    if (line.Contains(os))
-                    {
-                        sc.OsSupport = line.Substring(line.IndexOf(os) + os.Length);
-                    }
+                else {
+                    trimed = f_name.clone();
                 }
-                else if (Regex.IsMatch(line, rgxType))
-                {
-                    string st = "SigningType: ";
-                    if (line.Contains(st))
-                    {
-                        sc.SigningType = line.Substring(line.IndexOf(st) + st.Length);
-                    }
-                }
-                line = sr.ReadLine();
+                sc.file_name = trimed.clone();
+                sigchecks.push(sc);
             }
         }
+        else if line.starts_with("OS:") {
+            if let Some(sig) = sigchecks.last_mut() {
+                sig.os_support = (&line[3..]).to_string().trim().to_string();
+            }
+        }
+        else if line.starts_with("SigningType:") {
+            if let Some(sig) = sigchecks.last_mut() {
+                sig.signing_type = (&line[12..]).to_string().trim().to_string();
+            }
+        }
+        is_line = raw_iter.next();
     }
 }
-
-
-//string rgx = @"OS: *";
-//if (Regex.IsMatch(e.Data, rgx))
-//{
-//    outputlog.Append(e.Data).AppendLine();
-//}
-
-//SigningType: PreProd
-
-/*
-    dump cat: sigcheck.exe -d -s *.cat
-
-    D:\catdllsys\files\intcpmt.cat
-    HWID1: pci\ven_8086&dev_7d0d
-    HWID2: pci\ven_8086&dev_ad0d
-    OS: _v100,_v100_X64,Server_v100_X64,Server_v100_ARM64
-    SigningType: PreProd
-    PackageId: 3daf5a2b-748c-44d8-a621-45d25a3a4058
-    BundleID: Driver
-    Submission ID:  
-
-    D:\catdllsys\files\ishheciextensiontemplate_att.cat
-    HWID1: {95511210-d1f0-4091-b373-46fdcc5329f7}\ish_heci
-    OS: _v100_X64_21H2,_v100_X64_22H2,_v100_X64_24H2
-    Declarative: True
-    Universal: False
-    BundleID: ISH
-    Submission ID: 29990010_14368141040126453_1152921505697749527
- */
-*/
