@@ -1,224 +1,164 @@
-﻿use std::{fs::File, io::{Error, Read}};
+﻿use std::{fs::File, io::{BufRead, Error, Read}};
+use crate::csv_data::CsvOutData;
+pub struct HtmlHelper {}
 
-fn _load_txt(path: &str) -> Result<String, Error> {
-    let mut file = File::open(path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    Ok(content)
-}
-/*
-using System;
-using System.IO;
-using System.Text;
+impl HtmlHelper {
+    const BODY: &'static str = "<body>";
+    const _ENDBODY: &'static str = "</body>";
+    const H1: &'static str = "<h1>";
+    const ENDH1: &'static str = "</h1>";
+    const TABLE: &'static str = "<table>";
+    const ENDTABLE: &'static str = "</table>";
+    const _TH: &'static str = "<th>";
+    const ENDTH: &'static str = "</th>";
+    const TR: &'static str = "<tr>";
+    const ENDTR: &'static str = "</tr>";
+    const TD: &'static str = "<td>";
+    const ENDTD: &'static str = "</td>";
+    const STYLE: &'static str = "<style>";
+    const SCRIPT: &'static str = "<script>";
+    const STYLENAME: &'static str = "config\\style.css";
+    const SCRIPTNAME: &'static str = "config\\main.js";
 
-namespace SigningCheck
-{
-    public static class HtmlHelper
-    {
-        private const string tagBody = @"<body>";
-        private const string endTagBody = @"</body>";
-        private const string tagH1 = @"<h1>";
-        private const string endTagH1 = @"</h1>";
-        private const string tagTable = @"<table>";
-        private const string endTagTable = @"</table>";
-        private const string tagTh = @"<th>";
-        private const string endTagTh = @"</th>";
-        private const string tagTr = @"<tr>";
-        private const string endTagTr = @"</tr>";
-        private const string tagTd = @"<td>";
-        private const string endTagTd = @"</td>";
-        private const string tagStyle = @"<style>";
-        private const string tagScript = @"<script>";
-
-        private const string styleName = "config\\style.css";
-        private const string scriptName = "config\\main.js";
-
-        private static void addStringToTd(StringBuilder sb, string str, string className="")
-        {
-            if (className != "") {
-                sb.Append("<td class='" + className + "'>");
-            }
-            else
-            {
-                sb.Append(tagTd);
-            }
-            sb.Append(str);
-            sb.Append(endTagTd);
-        }
-
-        private static void addOToTd(StringBuilder sb, bool support)
-        {
-            if (support) { addStringToTd(sb, "O"); }
-            else { addStringToTd(sb, ""); }
-        }
-        private static string makeTable(CsvOutData data)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("<div id='summary-block'>\n");
-            sb.Append(tagH1).Append(data.Summary).Append(endTagH1).Append("\n</div>\n");
-            //div for display options
-            sb.Append("<div id='displayOptions'></div>\n");
-            //table part
-            sb.Append("<div id='results'>\n");
-            sb.Append(tagTable).Append("\n");
-            sb.Append(tagTr);
-            //NO.,Name,Summary,Path,PreProd,Attestation,TestSigning,WHQL,24H2,22H2,21H2,OtherOS,Expiry,Signers{Signer||ValidUsages||SigningDate||ValidFrom||ValidTo}
-            sb.Append("<th class='sticky'>No.").Append(endTagTh);
-            string[] adjustable = ["Path", "Other", "Signers"];
-            string[] stickys = ["Name", "Summary"];
-            foreach (var item in data.Title.Split(','))
-            {
-                string addClass = "";
-                string addId = "";
-                foreach (var adjust in adjustable)
-                {
-                    if (item.Contains(adjust))
-                    {
-                        addClass = " class='" + adjust + "-column'";
-                        break;
-                    }
+    pub fn to_html_table(data: &CsvOutData) -> String {
+        let mut sb = String::new();
+        let report_t = "config\\report";
+        let mut file = File::open(report_t).unwrap();
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer).unwrap();
+        for is_line in buffer.lines() {
+            if let Ok(line) = is_line {
+                sb.push_str(&line);
+                sb.push_str("\n");
+                if line.trim().eq_ignore_ascii_case("<title>") {
+                    let version = env!("CARGO_PKG_VERSION");
+                    let name = env!("CARGO_PKG_NAME");
+                    sb.push_str(&format!("{} {}\n", name, version));
                 }
-                foreach (var sticky in stickys)
-                {
-                    if (item.Contains(sticky))
-                    {
-                        addClass = " class='sticky'";
-                        addId = " id='" + sticky + "-column'";
-                        break;
-                    }
+                if line.trim().eq_ignore_ascii_case(Self::STYLE) {
+                    sb.push_str(&Self::load_txt(Self::STYLENAME).unwrap());
                 }
+                if line.trim().eq_ignore_ascii_case(Self::BODY) {
+                    sb.push_str(&Self::make_table(&data));
+                }
+                if line.trim().eq_ignore_ascii_case(Self::SCRIPT) {
+                    sb.push_str(&Self::load_txt(Self::SCRIPTNAME).unwrap());
+                }
+            }
+        }
+        sb
+    }
+
+    fn add_string_to_td(sb: &mut String, text: &str, class_name: &str) {
+        if !class_name.is_empty() {
+            (*sb).push_str("<td class='");
+            (*sb).push_str(class_name);
+            (*sb).push_str("'>");
+        }
+        else {
+            (*sb).push_str(Self::TD);
+        }
+        (*sb).push_str(text);
+        (*sb).push_str(Self::ENDTD);
+    }
+
+    fn add_o_to_td(sb: &mut String, support: bool) {
+        if support {
+            Self::add_string_to_td(sb, "O", "");
+        }
+        else {
+            Self::add_string_to_td(sb, "", "");
+        }
+    }
+
+    fn make_table(data: &CsvOutData) -> String {
+        let mut sb = String::new();
+        sb.push_str("<div id='summary-block'>\n");
+        sb.push_str(Self::H1);
+        sb.push_str(&data.summary);
+        sb.push_str(Self::ENDH1);
+        sb.push_str("\n</div>\n");
+        //div for display options
+        sb.push_str("<div id='displayOptions'></div>\n");
+        //table part
+        sb.push_str("<div id='results'>\n");
+        sb.push_str(Self::TABLE);
+        sb.push_str("\n");
+        sb.push_str(Self::TR);
+        //NO.,Name,Summary,Path,PreProd,Attestation,TestSigning,WHQL,24H2,22H2,21H2,OtherOS,Expiry,Signers{Signer||ValidUsages||SigningDate||ValidFrom||ValidTo}
+        sb.push_str("<th class='sticky'>No.");
+        sb.push_str(Self::ENDTH);
+        let adjustable = vec!["Path", "Other", "Signers"];
+        let stickys = vec!["Name", "Summary"];
+        for item in data.title.split(',').into_iter() {
+            let mut add_class = String::new();
+            let mut add_id = String::new();
+            for adjust in adjustable.iter() {
+                if item.contains(adjust) {
+                    add_class = " class='".to_string() + adjust + "-column'";
+                    break;
+                }
+            }
+            for sticky in stickys.iter() {
+                if item.contains(sticky) {
+                    add_class = " class='sticky'".to_string();
+                    add_id = " id='".to_string() + sticky + "-column'";
+                    break;
+                }
+            }
                 
-                sb.Append("<th" + addId + addClass + ">");
-                sb.Append(item).Append(endTagTh);
+            sb.push_str(&("<th".to_string() + &add_id + &add_class + ">"));
+            sb.push_str(item);
+            sb.push_str(Self::ENDTH);
+        }
+        sb.push_str(Self::ENDTR);
+        sb.push_str("\n");
+        let mut i = 1i32;
+        for csv_data in data.data.iter() {
+            sb.push_str(Self::TR);
+            Self::add_string_to_td(&mut sb, &i.to_string(), "sticky"); i+=1;
+            Self::add_string_to_td(&mut sb, &csv_data.name, "sticky");
+            Self::add_string_to_td(&mut sb, &csv_data.summary, "sticky");
+            Self::add_string_to_td(&mut sb, &csv_data.file_path, "Path-column");
+            Self::add_o_to_td(&mut sb, csv_data.pre_prod);
+            Self::add_o_to_td(&mut sb, csv_data.attestation);
+            Self::add_o_to_td(&mut sb, csv_data.test_signing);
+            Self::add_o_to_td(&mut sb, csv_data.whql);
+            for os in csv_data.os_version.iter() {
+                Self::add_o_to_td(&mut sb, os.1);
             }
-            sb.Append(endTagTr).Append("\n");
-            int i = 1;
-            foreach (var csvData in data.Data)
-            {
-                sb.Append(tagTr);
-                addStringToTd(sb, i.ToString(), "sticky"); i++;
-                addStringToTd(sb, csvData.Name, "sticky");
-                addStringToTd(sb, csvData.Summary, "sticky");
-                addStringToTd(sb, csvData.FilePath, "Path-column");
-                addOToTd(sb, csvData.PreProd);
-                addOToTd(sb, csvData.Attestation);
-                addOToTd(sb, csvData.TestSigning);
-                addOToTd(sb, csvData.Whql);
-                foreach (var os in csvData.OsVersion)
-                {
-                    addOToTd(sb, os.Item2);
+            Self::add_string_to_td(&mut sb, &csv_data.other_os, "Other-column");
+            Self::add_string_to_td(&mut sb, &csv_data.ts_expiry_date, "");
+            let mut pre_str = String::new();
+            for signer in csv_data.sigcheck_data.signers.iter() {
+                pre_str = pre_str.clone() + &signer.name + " {";
+                for vu in signer.valid_usages.iter() {
+                    pre_str = pre_str.clone() + vu + ", ";
                 }
-                addStringToTd(sb, csvData.OtherOS, "Other-column");
-                addStringToTd(sb, csvData.TsExpiryDate);
-                string preStr = string.Empty;
-                foreach (var signer in csvData.SigcheckData.Signers)
-                {
-                    preStr += signer.Name + " {";
-                    foreach (var vu in signer.ValidUsages)
-                    {
-                        preStr += vu + ", ";
-                    }
-                    preStr += "date:" + signer.SigningDate + "||from:" + signer.ValidFrom + "||to:" + signer.ValidTo + "} ";
+                pre_str = 
+                    pre_str.clone() +
+                    "date:" + 
+                    &signer.signing_date +
+                    "||from:" +
+                    &signer.valid_from +
+                    "||to:" + 
+                    &signer.valid_to +
+                    "} ";
                 }
-                addStringToTd(sb, preStr, "Signers-column");
-                sb.Append(endTagTr).Append("\n");
+                Self::add_string_to_td(&mut sb, &pre_str, "Signers-column");
+                sb.push_str(Self::ENDTR);
+                sb.push_str("\n");
             }
-            sb.Append(endTagTable).Append("\n</div>\n");
-            return sb.ToString();
+            sb.push_str(Self::ENDTABLE);
+            sb.push_str("\n</div>\n");
 
-        }
-        private static string readFrom(string name)
-        {
-            StringBuilder sb = new StringBuilder();
-            using (StreamReader sr = new StreamReader(name))
-            {
-                string line = sr.ReadLine();
-                while (line != null)
-                {
-                    sb.Append(line).Append("\n");
-                    line = sr.ReadLine();
-                }
-            }
-            return sb.ToString();
-        }
-        public static string ToHtmlTable(CsvOutData data)
-        {
-            StringBuilder sb = new StringBuilder();
-            string reportT = "config\\report";
-            using (StreamReader sr = new StreamReader(reportT))
-            {
-                try
-                {
-                    string line = sr.ReadLine();
-                    while (line != null)
-                    {
-                        sb.Append(line).Append("\n");
-                        if (line.Trim().Equals("<title>", StringComparison.OrdinalIgnoreCase))
-                        {
-                            sb.Append(Program.Version + "\n");
-                        }
-                        if (line.Trim().Equals(tagStyle, StringComparison.OrdinalIgnoreCase))
-                        {
-                            sb.Append(readFrom(styleName));
-                        }
-                        if (line.Trim().Equals(tagBody, StringComparison.OrdinalIgnoreCase))
-                        {
-                            sb.Append(makeTable(data));
-                        }
-                        if (line.Trim().Equals(tagScript, StringComparison.OrdinalIgnoreCase))
-                        {
-                            sb.Append(readFrom(scriptName));
-                        }
-                        
-                        line = sr.ReadLine();
-                    }
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.ToString());
-                }
-            }
+        sb
+    }
 
-            return sb.ToString();
-        }
+    fn load_txt(path: &str) -> Result<String, Error> {
+        let mut file = File::open(path)?;
+        let mut content = String::new();
+        file.read_to_string(&mut content)?;
+        Ok(content)
     }
 }
-
-/*
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <style>
-    table, th, td {
-        border-style: solid;
-        border-width: 1px;
-        border-collapse: collapse;
-    }
-    </style>
-    </head>
-    <body>
-
-    <h1>summary line</h1>
-
-    <table>
-      <tr>
-        <th>name</th>
-        <th>summary</th>
-        <th>path</th>
-      </tr>
-      <tr>
-        <td>acxdac.cat</td>
-        <td>WHQL signed</td>
-        <td>\INT_VGA_MTL_101.5522_WHQL_22H2\Driver\dchu_5522</td>
-      </tr>
-      <tr>
-        <td>acxdac.cat</td>
-        <td>WHQL signed</td>
-        <td>\INT_VGA_MTL_101.5522_WHQL_22H2\Driver\dchu_5522</td>
-      </tr>
-    </table>
-
-    </body>
-    </html>
- */
-*/
