@@ -1,6 +1,6 @@
 ﻿use std::path::Path;
 use chrono::{Local, Months};
-use crate::date_helper::parse_date;
+use crate::date_helper::{get_date, parse_date};
 
 use crate::sigcheck_data::{SigcheckData, SignerData};
 
@@ -40,7 +40,7 @@ pub fn parse_signchain(raw: &str, sigchecks: &mut Vec<SigcheckData>, to_trim: &s
                     let mut line = is_line.unwrap().trim();
                     if line.starts_with("Signing date:") {
                         let mut signer = SignerData::new();
-                        signer.signing_date = (&line[13..]).trim().to_string();
+                        signer.signing_date = get_date(&line[13..].trim());
                         is_line = raw_iter.next();
                         while is_line.is_some() {
                             line = is_line.unwrap().trim();
@@ -59,10 +59,10 @@ pub fn parse_signchain(raw: &str, sigchecks: &mut Vec<SigcheckData>, to_trim: &s
                                         }
                                     }
                                     else if line.starts_with("Valid from:") {
-                                        signer.valid_from = (&line[11..]).trim().to_string();
+                                        signer.valid_from = get_date(&line[11..].trim());
                                     }
                                     else if line.starts_with("Valid to:") {
-                                        signer.valid_to = (&line[9..]).trim().to_string();
+                                        signer.valid_to = get_date(&line[9..].trim());
                                         let now = Local::now()
                                             .format("%Y/%m/%d")
                                             .to_string();

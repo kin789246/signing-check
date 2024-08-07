@@ -131,6 +131,13 @@ fn main() -> ExitCode {
         });
     
     gen_csv(&opts.output, &sigchecks, &to_del);
+    log(
+        &format!("save results to {}", &(opts.output + ".csv")),
+        &log_name,
+        true,
+        true,
+        true
+    );
     // _log_sigcheck_list(&opts.output, &sigchecks);
 
     let tmp_dir = Path::new("tmp");
@@ -235,7 +242,9 @@ fn gen_csv(
             csv_out.data.push(output);
         });
     csv_out.get_summary();
-    log(&csv_out.to_string(), &(path.to_string() + ".csv"), true, false, false);
+    let f_csv = path.to_string() + ".csv";
+    let f_html = path.to_string() + ".html";
+    log(&csv_out.to_string(), &f_csv, true, false, false);
 }
 
 fn load_os_cfg(path: &str, os_ver: &mut Vec<(String, bool)>) -> Result<(), Error> {

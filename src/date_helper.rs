@@ -10,3 +10,15 @@ pub fn parse_date(date_str: &str) -> Result<NaiveDate, &str> {
     }
     Err("parse failed")
 }
+
+pub fn get_date(date_str: &str) -> String {
+    for p in date_str.split(' ').into_iter() {
+        if let Ok(date) = NaiveDate::parse_from_str(p, "%Y/%m/%d") {
+            return date.format("%Y/%m/%d").to_string();
+        }
+        if let Ok(date) = NaiveDate::parse_from_str(p, "%m/%d/%Y") {
+            return date.format("%Y/%m/%d").to_string();
+        }
+    }
+    date_str.to_string()
+}
