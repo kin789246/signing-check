@@ -1,4 +1,4 @@
-﻿use std::{fs::{create_dir_all, File}, io::copy, path::Path};
+use std::{fs::{create_dir_all, File}, io::copy, path::Path};
 use zip::result::ZipError;
 
 pub fn extract_exts(path: &str, exts: &Vec<String>) -> Result<String, ZipError> {

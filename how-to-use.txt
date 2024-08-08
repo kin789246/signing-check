@@ -1,4 +1,4 @@
-﻿1. zip driver package or unzip directory
+1. zip driver package or unzip directory
 2. run commands directly
    a) signingcheck -p path\drv_name.zip
    b) signingcheck -p path\of\driver\directory

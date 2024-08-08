@@ -1,4 +1,4 @@
-﻿use std::{fs::File, io::{BufRead, Error, Read}};
+use std::{fs::File, io::{BufRead, Error, Read}};
 use crate::csv_data::CsvOutData;
 pub struct HtmlHelper {}
 

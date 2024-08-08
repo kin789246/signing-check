@@ -1,4 +1,4 @@
-﻿use crate::date_helper::parse_date;
+use crate::date_helper::parse_date;
 use std::{collections::HashMap, path::Path, fmt};
 use crate::sigcheck_data::SigcheckData;
 #[derive(Clone)]

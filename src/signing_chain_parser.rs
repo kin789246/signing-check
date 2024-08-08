@@ -1,4 +1,4 @@
-﻿use std::path::Path;
+use std::path::Path;
 use chrono::{Local, Months};
 use crate::date_helper::{get_date, parse_date};
 

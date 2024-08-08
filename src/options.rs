@@ -1,4 +1,4 @@
-﻿use std::path::Path;
+use std::path::Path;
 use chrono::Local;
 
 #[derive(Debug)]

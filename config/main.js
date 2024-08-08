@@ -1,4 +1,4 @@
-﻿function addOption(select, str) {
+function addOption(select, str) {
     let opt = document.createElement("option");
     opt.value = str;
     opt.innerHTML = str;

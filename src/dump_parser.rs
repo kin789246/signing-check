@@ -1,4 +1,4 @@
-﻿use std::path::Path;
+use std::path::Path;
 use crate::sigcheck_data::SigcheckData;
 
 pub fn parse_dump(raw: &str, sigchecks: &mut Vec<SigcheckData>, to_trim: &str) {
